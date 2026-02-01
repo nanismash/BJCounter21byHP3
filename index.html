@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>Contador Blackjack</title>
+    <meta name="description" content="Contador de cartas Hi-Lo para Blackjack con estrategia básica, Illustrious 18 y Kelly Criterion.">
+    <meta name="theme-color" content="#065f46">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="BJ Counter">
+    <link rel="apple-touch-icon" sizes="192x192" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='40' fill='%23065f46'/><text x='96' y='130' font-size='110' text-anchor='middle' fill='white'>♠</text></svg>">
+    <link rel="manifest" href="manifest.json">
+    <script>if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{})}</script>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='10' fill='%23059669'/><text x='50' y='70' font-size='60' text-anchor='middle' fill='white'>♠</text></svg>">
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        html, body { height:100%; overflow:hidden; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #065f46;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='6' height='6'%3E%3Crect width='6' height='6' fill='%23065f46'/%3E%3Ccircle cx='1' cy='1' r='1' fill='%23053d2e' opacity='0.35'/%3E%3Ccircle cx='4' cy='4' r='1' fill='%23053d2e' opacity='0.35'/%3E%3C/svg%3E");
+            color:#fff;
+            position:fixed; top:0; left:0; right:0; bottom:0;
+        }
+        .app-scroll {
+            position:absolute; top:0; left:0; right:0; bottom:0;
+            overflow-y:auto; overflow-x:hidden;
+            padding:10px;
+            -webkit-overflow-scrolling:touch;
+        }
+        .container { max-width:500px; margin:0 auto; }
+
+        /* ========== SPLASH ========== */
+        #splash {
+            position:fixed; inset:0; z-index:9999;
+            background-color:#065f46;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='6' height='6'%3E%3Crect width='6' height='6' fill='%23065f46'/%3E%3Ccircle cx='1' cy='1' r='1' fill='%23053d2e' opacity='0.35'/%3E%3Ccircle cx='4' cy='4' r='1' fill='%23053d2e' opacity='0.35'/%3E%3C/svg%3E");
+            display:flex; flex-direction:column; align-items:center; justify-content:center;
+            transition: opacity 0.5s ease;
+        }
+        #splash.hide { opacity:0; pointer-events:none; }
+        #splash .splash-icon { font-size:5em; margin-bottom:14px; }
+        #splash .splash-title { font-size:1.9em; font-weight:700; color:#fff; letter-spacing:1px; text-shadow:2px 2px 8px rgba(0,0,0,0.4); }
+        #splash .splash-brand { font-size:0.85em; color:#6ee7b7; font-style:italic; letter-spacing:3px; margin-top:10px; }
+
+        /* ========== MENU SISTEMA ========== */
+        #menuSistema {
+            position:fixed; inset:0; z-index:100;
+            background-color:#065f46;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='6' height='6'%3E%3Crect width='6' height='6' fill='%23065f46'/%3E%3Ccircle cx='1' cy='1' r='1' fill='%23053d2e' opacity='0.35'/%3E%3Ccircle cx='4' cy='4' r='1' fill='%23053d2e' opacity='0.35'/%3E%3C/svg%3E");
+            display:none;
+            padding:40px 20px;
+        }
+        #menuSistema.show { display:flex; flex-direction:column; align-items:center; justify-content:center; }
+        .menu-title { font-size:1.3em; font-weight:700; color:#6ee7b7; margin-bottom:24px; text-transform:uppercase; letter-spacing:1.5px; text-align:center; }
+        .sistema-btn {
+            width:100%; max-width:340px; padding:18px 20px; margin-bottom:12px;
+            border-radius:12px; border:2px solid #10b981;
+            background:rgba(20,42,34,0.92); color:#fff;
+            font-size:1.05em; font-weight:700; cursor:pointer; text-align:left;
+            box-shadow:0 3px 10px rgba(0,0,0,0.3);
+        }
+        .sistema-btn:active { background:rgba(16,185,129,0.15); border-color:#34d399; }
+        .sistema-btn .sbt { display:block; font-size:1em; color:#6ee7b7; }
+        .sistema-btn .sbd { display:block; font-size:0.72em; color:#a7f3d0; margin-top:3px; font-style:italic; font-weight:400; }
+        .sistema-btn.disabled { opacity:0.45; cursor:default; border-color:#3a5a4a; }
+        .sistema-btn.disabled:active { background:rgba(20,42,34,0.92); border-color:#3a5a4a; }
+        .coming-soon-badge { display:inline-block; background:#dc2626; color:#fff; font-size:0.6em; padding:2px 7px; border-radius:20px; margin-left:8px; vertical-align:middle; letter-spacing:0.5px; font-weight:700; }
+        .back-btn {
+            margin-top:28px; padding:12px 32px; border-radius:10px;
+            border:1.5px solid #10b981; background:rgba(6,78,59,0.7);
+            color:#a7f3d0; font-size:0.92em; font-weight:600; cursor:pointer;
+        }
+        .back-btn:active { background:rgba(16,185,129,0.2); }
+
+        /* ========== MAIN ========== */
+        .top-bar { display:flex; justify-content:flex-end; margin-bottom:4px; }
+        .menu-btn { background:none; border:none; color:#6ee7b7; font-size:1.4em; cursor:pointer; padding:2px 6px; }
+        h1 { text-align:center; margin-bottom:10px; font-size:1.35em; font-weight:700; text-shadow:2px 2px 6px rgba(0,0,0,0.4); }
+        .card {
+            background:rgba(20,42,34,0.92); border-radius:14px; padding:14px; margin-bottom:11px;
+            border:1.5px solid #10b981; box-shadow:0 3px 12px rgba(0,0,0,0.35);
+        }
+        .section-title { font-size:0.72em; text-transform:uppercase; letter-spacing:1.2px; color:#6ee7b7; margin-bottom:9px; font-weight:700; }
+
+        /* Decks */
+        .deck-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:5px; margin-bottom:9px; }
+        .deck-btn {
+            padding:11px 4px; font-size:1.15em; font-weight:700;
+            border:1.5px solid #34d399; background:#064e3b; color:#a7f3d0;
+            border-radius:9px; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,0.2);
+        }
+        .deck-btn:active { transform:scale(0.94); }
+        .deck-btn.active { background:linear-gradient(135deg,#10b981,#059669); border-color:#10b981; color:#fff; box-shadow:0 3px 14px rgba(16,185,129,0.45); }
+        .cards-remaining {
+            text-align:center; padding:8px; background:rgba(6,78,59,0.7);
+            border-radius:7px; font-size:0.85em; color:#d1fae5;
+            border:1px solid rgba(16,185,129,0.4);
+        }
+        .cards-remaining input { font-weight:700; color:#6ee7b7; font-size:1.15em; background:transparent; border:none; outline:none; }
+
+        /* Stats */
+        .stats-grid { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+        .stat-box {
+            background:rgba(6,78,59,0.7); border-radius:10px; border:1.5px solid #059669;
+            display:flex; flex-direction:column; align-items:center; justify-content:center;
+            padding:10px; min-height:80px;
+        }
+        .stat-label { font-size:0.68em; color:#a7f3d0; text-transform:uppercase; letter-spacing:0.5px; font-weight:600; margin-bottom:6px; }
+        .stat-value { font-size:1.9em; font-weight:700; line-height:1; color:#d1fae5; text-align:center; }
+        .stat-value.positive { color:#6ee7b7; text-shadow:0 0 12px rgba(110,231,183,0.45); }
+        .stat-value.negative { color:#fca5a5; text-shadow:0 0 12px rgba(252,165,165,0.45); }
+        .stat-value.neutral  { color:#d1fae5; }
+        #runningCount {
+            background:transparent; border:1.5px solid transparent;
+            font-size:1.9em; font-weight:700; text-align:center; width:70px;
+            border-radius:5px; line-height:1; padding:0;
+            transition:border-color 0.15s;
+        }
+        #runningCount:focus { outline:none; border-color:#10b981; background:rgba(16,185,129,0.08); }
+        input[type=number]::-webkit-outer-spin-button,
+        input[type=number]::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
+        input[type=number] { -moz-appearance:textfield; }
+
+        /* Betting */
+        .betting-box { background:rgba(6,78,59,0.7); padding:12px; border-radius:10px; text-align:center; border:1.5px solid #059669; }
+        .betting-label { font-size:0.72em; color:#a7f3d0; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.7px; font-weight:600; }
+        .betting-value { font-size:2.3em; font-weight:700; line-height:1; }
+        .betting-value.low { color:#d1fae5; }
+        .betting-value.medium { color:#fde68a; text-shadow:0 0 12px rgba(253,230,138,0.45); }
+        .betting-value.high { color:#6ee7b7; text-shadow:0 0 15px rgba(110,231,183,0.5); }
+        .betting-value.very-high { color:#34d399; text-shadow:0 0 18px rgba(52,211,153,0.6); animation:pulse 2s infinite; }
+        @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.04)} }
+
+        /* Card buttons */
+        .card-row-label { font-size:0.68em; color:#a7f3d0; text-transform:uppercase; letter-spacing:0.8px; font-weight:600; margin-bottom:5px; text-align:center; }
+        .card-btns-grid { display:grid; gap:4px; margin-bottom:4px; }
+        .card-btn {
+            padding:9px 2px; font-size:0.88em; font-weight:700; border:none;
+            border-radius:7px; cursor:pointer; color:#fff; text-align:center; line-height:1.2;
+            box-shadow:0 2px 5px rgba(0,0,0,0.3);
+        }
+        .card-btn:active { transform:scale(0.91); filter:brightness(0.85); }
+        .card-btn .card-name { display:block; font-size:1.1em; }
+        .card-btn .card-count { display:block; font-size:0.72em; opacity:0.85; margin-top:1px; }
+        .btn-plus  { background:linear-gradient(135deg,#10b981,#059669); }
+        .btn-zero  { background:linear-gradient(135deg,#d4a017,#b8860b); }
+        .btn-minus { background:linear-gradient(135deg,#ef4444,#dc2626); }
+
+        /* Quick tap */
+        .quick-label { font-size:0.68em; color:#a7f3d0; text-transform:uppercase; letter-spacing:0.8px; font-weight:600; margin-bottom:5px; text-align:center; }
+        .count-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
+        .count-btn {
+            padding:14px 10px; font-size:1.6em; font-weight:700; border:none;
+            border-radius:10px; cursor:pointer; color:#fff; box-shadow:0 2px 8px rgba(0,0,0,0.3);
+        }
+        .count-btn:active { transform:scale(0.94); filter:brightness(0.85); }
+        .count-btn.minus { background:linear-gradient(135deg,#ef4444,#dc2626); }
+        .count-btn.zero  { background:linear-gradient(135deg,#d4a017,#b8860b); }
+        .count-btn.plus  { background:linear-gradient(135deg,#10b981,#059669); }
+
+        /* Strategy */
+        .strategy-box { background:rgba(6,78,59,0.7); padding:14px; border-radius:10px; border:1px solid #10b981; }
+        .strategy-title { font-size:0.72em; color:#a7f3d0; margin-bottom:10px; text-transform:uppercase; letter-spacing:0.7px; font-weight:600; }
+        .input-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:10px; }
+        .input-wrapper { display:flex; flex-direction:column; gap:4px; }
+        .input-label { font-size:0.68em; color:#a7f3d0; text-transform:uppercase; letter-spacing:0.5px; font-weight:600; text-align:center; }
+        .hand-input {
+            -webkit-appearance:none; -moz-appearance:none; appearance:none;
+            padding:9px 4px; font-size:1em; font-weight:700;
+            background:rgba(20,42,34,0.9); border:1.5px solid #10b981;
+            border-radius:7px; color:#fff; text-align:center; cursor:pointer;
+        }
+        .hand-input:focus { outline:none; border-color:#34d399; box-shadow:0 0 0 2px rgba(16,185,129,0.2); }
+        .get-rec-btn {
+            width:100%; padding:11px; font-size:0.95em; font-weight:700;
+            background:linear-gradient(135deg,#64748b,#475569); color:#fff;
+            border:none; border-radius:9px; cursor:pointer;
+            box-shadow:0 2px 8px rgba(0,0,0,0.3); margin-bottom:10px;
+        }
+        .get-rec-btn:active { transform:scale(0.96); filter:brightness(0.85); }
+        .strategy-recommendation {
+            background:rgba(20,42,34,0.9); padding:11px; border-radius:7px;
+            border-left:3.5px solid #10b981; box-shadow:0 2px 6px rgba(0,0,0,0.2); margin-bottom:7px;
+        }
+        .recommendation-text { font-size:1.05em; font-weight:700; color:#6ee7b7; margin-bottom:4px; }
+        .recommendation-detail { font-size:0.82em; color:#d1fae5; line-height:1.4; font-style:italic; }
+        .recommendation-detail.warning { color:#fde68a; }
+        .strategy-footer { font-size:0.72em; color:#a7f3d0; font-style:italic; text-align:center; margin-top:8px; line-height:1.4; }
+
+        .reset-btn {
+            width:100%; padding:12px; font-size:0.95em; font-weight:700;
+            background:linear-gradient(135deg,#059669,#047857); color:#fff;
+            border:1.5px solid #10b981; border-radius:10px; cursor:pointer;
+            box-shadow:0 2px 10px rgba(0,0,0,0.3);
+        }
+        .reset-btn:active { transform:scale(0.97); filter:brightness(0.85); }
+        .helper-text { font-size:0.68em; color:#a7f3d0; text-align:center; margin-top:7px; line-height:1.35; font-style:italic; }
+        .footer { text-align:center; margin-top:14px; margin-bottom:8px; padding:8px; color:#6ee7b7; font-size:0.78em; font-style:italic; letter-spacing:2px; }
+    </style>
+</head>
+<body>
+
+<div id="splash">
+    <div class="splash-icon">🃏</div>
+    <div class="splash-title">BJ Counter</div>
+    <div class="splash-brand">byHachePe</div>
+</div>
+
+<div id="menuSistema">
+    <div class="menu-title">Sistema de Conteo</div>
+    <button class="sistema-btn" onclick="selectSistema('hilo')">
+        <span class="sbt">Hi-Lo</span>
+        <span class="sbd">Sistema clásico desequilibrado. 2-6 = +1 | 7-9 = 0 | 10-A = -1</span>
+    </button>
+    <button class="sistema-btn disabled">
+        <span class="sbt">KO (Knockout) <span class="coming-soon-badge">COMING SOON</span></span>
+        <span class="sbd">Sistema desequilibrado sin necesidad de calcular True Count.</span>
+    </button>
+    <button class="sistema-btn disabled">
+        <span class="sbt">Omega II <span class="coming-soon-badge">COMING SOON</span></span>
+        <span class="sbd">Sistema balanceado de alta precisión con valores +2 / -2.</span>
+    </button>
+    <button class="back-btn" onclick="closeMenu()">← Back</button>
+</div>
+
+<div class="app-scroll" id="appScroll">
+<div class="container">
+    <div class="top-bar"><button class="menu-btn" onclick="openMenu()">☰</button></div>
+    <h1>🃏 Contador Blackjack 🎰</h1>
+
+    <div class="card">
+        <div class="section-title">Mazos</div>
+        <div class="deck-grid">
+            <button class="deck-btn" onclick="setDecks(1,this)">1</button>
+            <button class="deck-btn" onclick="setDecks(2,this)">2</button>
+            <button class="deck-btn" onclick="setDecks(3,this)">3</button>
+            <button class="deck-btn" onclick="setDecks(4,this)">4</button>
+            <button class="deck-btn" onclick="setDecks(5,this)">5</button>
+            <button class="deck-btn" onclick="setDecks(6,this)">6</button>
+            <button class="deck-btn" onclick="setDecks(7,this)">7</button>
+            <button class="deck-btn active" onclick="setDecks(8,this)">8</button>
+        </div>
+        <div class="cards-remaining">Cartas restantes: <input type="number" id="cardsRemaining" value="416" onchange="updateFromCards()" style="width:62px;"></div>
+    </div>
+
+    <div class="card">
+        <div class="stats-grid">
+            <div class="stat-box">
+                <div class="stat-label">Running Count</div>
+                <input type="number" id="runningCount" class="stat-value neutral" value="0" onchange="updateFromRunning()">
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">True Count</div>
+                <div class="stat-value neutral" id="trueCount">0</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="betting-box">
+            <div class="betting-label">Unidades a Apostar</div>
+            <div class="betting-value low" id="bettingUnits">1</div>
+        </div>
+        <div class="helper-text">Basado en True Count y Kelly Criterion</div>
+    </div>
+
+    <div class="card">
+        <div class="section-title">Añadir Cartas</div>
+        <div class="quick-label">Tap rápido</div>
+        <div class="count-grid">
+            <button class="count-btn minus" onclick="addCount(-1)">-1</button>
+            <button class="count-btn zero" onclick="addCount(0)">0</button>
+            <button class="count-btn plus" onclick="addCount(1)">+1</button>
+        </div>
+        <div class="card-row-label" style="margin-top:12px;">Cartas individuales</div>
+        <div class="card-btns-grid" style="grid-template-columns:repeat(5,1fr);">
+            <button class="card-btn btn-plus" onclick="addCard('2')"><span class="card-name">2</span><span class="card-count">+1</span></button>
+            <button class="card-btn btn-plus" onclick="addCard('3')"><span class="card-name">3</span><span class="card-count">+1</span></button>
+            <button class="card-btn btn-plus" onclick="addCard('4')"><span class="card-name">4</span><span class="card-count">+1</span></button>
+            <button class="card-btn btn-plus" onclick="addCard('5')"><span class="card-name">5</span><span class="card-count">+1</span></button>
+            <button class="card-btn btn-plus" onclick="addCard('6')"><span class="card-name">6</span><span class="card-count">+1</span></button>
+        </div>
+        <div class="card-btns-grid" style="grid-template-columns:repeat(3,1fr);">
+            <button class="card-btn btn-zero" onclick="addCard('7')"><span class="card-name">7</span><span class="card-count">0</span></button>
+            <button class="card-btn btn-zero" onclick="addCard('8')"><span class="card-name">8</span><span class="card-count">0</span></button>
+            <button class="card-btn btn-zero" onclick="addCard('9')"><span class="card-name">9</span><span class="card-count">0</span></button>
+        </div>
+        <div class="card-btns-grid" style="grid-template-columns:repeat(5,1fr);">
+            <button class="card-btn btn-minus" onclick="addCard('10')"><span class="card-name">10</span><span class="card-count">-1</span></button>
+            <button class="card-btn btn-minus" onclick="addCard('J')"><span class="card-name">J</span><span class="card-count">-1</span></button>
+            <button class="card-btn btn-minus" onclick="addCard('Q')"><span class="card-name">Q</span><span class="card-count">-1</span></button>
+            <button class="card-btn btn-minus" onclick="addCard('K')"><span class="card-name">K</span><span class="card-count">-1</span></button>
+            <button class="card-btn btn-minus" onclick="addCard('A')"><span class="card-name">A</span><span class="card-count">-1</span></button>
+        </div>
+        <div class="helper-text">Basado en Sistema Hi-Lo</div>
+    </div>
+
+    <div class="card">
+        <div class="strategy-box">
+            <div class="strategy-title">Decisión de Jugada</div>
+            <div class="input-row">
+                <div class="input-wrapper">
+                    <div class="input-label">Carta 1</div>
+                    <select class="hand-input" id="card1">
+                        <option value="">-</option><option value="A">A</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="J">J</option><option value="Q">Q</option><option value="K">K</option>
+                    </select>
+                </div>
+                <div class="input-wrapper">
+                    <div class="input-label">Carta 2</div>
+                    <select class="hand-input" id="card2">
+                        <option value="">-</option><option value="A">A</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="J">J</option><option value="Q">Q</option><option value="K">K</option>
+                    </select>
+                </div>
+                <div class="input-wrapper">
+                    <div class="input-label">Dealer</div>
+                    <select class="hand-input" id="dealerCard">
+                        <option value="">-</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="J">J</option><option value="Q">Q</option><option value="K">K</option><option value="A">A</option>
+                    </select>
+                </div>
+            </div>
+            <button class="get-rec-btn" onclick="getRecommendation()">⚡ Obtener Recomendación ⚡</button>
+            <div id="recommendationContainer"></div>
+            <div class="strategy-footer">Basado en Basic Strategy, Illustrious 18 y Fab 4</div>
+        </div>
+    </div>
+
+    <button class="reset-btn" onclick="resetCount()">🔄 Reiniciar Conteo</button>
+    <div style="margin-top:18px; padding:12px 14px; background:rgba(30,20,20,0.55); border-radius:9px; border:1px solid rgba(160,160,160,0.25);">
+        <div style="font-size:0.68em; color:rgba(200,200,200,0.75); line-height:1.5; text-align:center;">
+            <strong style="color:rgba(220,220,220,0.9);">⚠ Disclaimer</strong><br>
+            Esta aplicación es exclusivamente para uso educativo y académico con el fin de entender los principios matemáticos del conteo de cartas en Blackjack. No constituye asesoramiento ni un estímulo para participar en juegos de azar. El uso real en establecimientos de juego puede estar sujeto a restricciones legales y prohibiciones según la jurisdicción. El resultado de cualquier apuesta individual sigue siendo aleatorio y no garantiza beneficios económicos.
+        </div>
+    </div>
+    <div class="footer">byHachePe</div>
+</div>
+</div>
+
+<script>
+// ================================================
+// STATE
+// ================================================
+let decksSelected=8, cardsRemaining=416, runningCount=0;
+
+// ================================================
+// SPLASH
+// ================================================
+window.addEventListener('load',()=>{
+    setTimeout(()=>{ document.getElementById('splash').classList.add('hide'); },3000);
+});
+
+// ================================================
+// MENU
+// ================================================
+function openMenu(){ playTap(); document.getElementById('menuSistema').classList.add('show'); }
+function closeMenu(){ playTap(); document.getElementById('menuSistema').classList.remove('show'); }
+function selectSistema(s){ playTap(); closeMenu(); }
+
+// ================================================
+// AUDIO
+// ================================================
+let audioCtx=null;
+function ensureAudio(){
+    if(!audioCtx){ try{ audioCtx=new(window.AudioContext||window.webkitAudioContext)(); }catch(e){} }
+    if(audioCtx&&audioCtx.state==='suspended') audioCtx.resume();
+}
+function playTap(){
+    ensureAudio(); if(!audioCtx) return;
+    try{
+        const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+        o.connect(g); g.connect(audioCtx.destination); o.type='sine';
+        o.frequency.setValueAtTime(420,audioCtx.currentTime);
+        o.frequency.exponentialRampToValueAtTime(180,audioCtx.currentTime+0.06);
+        g.gain.setValueAtTime(0.18,audioCtx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.08);
+        o.start(audioCtx.currentTime); o.stop(audioCtx.currentTime+0.09);
+    }catch(e){}
+}
+document.addEventListener('pointerdown',ensureAudio,{once:true});
+document.addEventListener('touchstart',ensureAudio,{once:true});
+
+// ================================================
+// LIMITS
+// ================================================
+// Cartas: entre 0 y decksSelected*52
+function clampCards(v){ return Math.max(0, Math.min(v, decksSelected*52)); }
+
+// Running Count: límite teórico ±(decksSelected*4)
+// Con 8 mazos el máximo posible es ±32, con 1 mazo ±4, etc.
+// Esto impide que el usuario edite manualmente un RC absurdo como +200
+function clampRunningCount(v){ return Math.max(-(decksSelected*4), Math.min(v, decksSelected*4)); }
+
+// ================================================
+// CORE MATH
+// ================================================
+function getDecksFraction(){ return cardsRemaining/52; }
+function getTrueCountRaw(){ const df=getDecksFraction(); return df>0?runningCount/df:0; }
+function roundToHalf(n){ return Math.round(n*2)/2; }
+function calcBettingUnits(tc){
+    if(tc<=1)    return 1;
+    if(tc<=1.75) return 1.5;
+    if(tc<=2.25) return 2;
+    if(tc<=2.75) return 2.5;
+    if(tc<=3.25) return 3;
+    if(tc<=3.75) return 3.5;
+    if(tc<=4.25) return 4;
+    if(tc<=4.75) return 5;
+    if(tc<=5.25) return 6;
+    if(tc<=5.75) return 7;
+    if(tc<=6.25) return 8;
+    if(tc<=7)    return 9;
+    if(tc<=8)    return 10;
+    if(tc<=9)    return 11;
+    return 12;
+}
+
+// ================================================
+// DISPLAY
+// ================================================
+function updateDisplay(){
+    document.getElementById('cardsRemaining').value=cardsRemaining;
+    const rc=document.getElementById('runningCount');
+    rc.value=runningCount;
+    rc.className='stat-value '+(runningCount>0?'positive':runningCount<0?'negative':'neutral');
+    const tcRaw=getTrueCountRaw(), tcD=roundToHalf(tcRaw);
+    const tcEl=document.getElementById('trueCount');
+    tcEl.textContent=tcD%1===0?tcD.toFixed(0):tcD.toFixed(1);
+    tcEl.className='stat-value '+(tcD>0?'positive':tcD<0?'negative':'neutral');
+    const bu=calcBettingUnits(tcD);
+    const bue=document.getElementById('bettingUnits');
+    bue.textContent=bu%1===0?bu.toFixed(0):bu.toFixed(1);
+    bue.className='betting-value '+(bu>=10?'very-high':bu>=6?'high':bu>=3?'medium':'low');
+}
+
+// ================================================
+// ACTIONS
+// ================================================
+function setDecks(d,btn){
+    playTap(); decksSelected=d; cardsRemaining=d*52; runningCount=0;
+    document.querySelectorAll('.deck-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active'); updateDisplay();
+}
+
+function updateFromCards(){
+    let v=parseInt(document.getElementById('cardsRemaining').value)||0;
+    if(v>416){ v=416; }
+    // Inferir el botón correcto: el menor d tal que d*52 >= v
+    let inferred=Math.ceil(v/52);
+    if(inferred<1) inferred=1;
+    if(inferred>8) inferred=8;
+    decksSelected=inferred;
+    document.querySelectorAll('.deck-btn').forEach((b,i)=>{ b.classList.toggle('active', i===inferred-1); });
+    cardsRemaining=Math.max(0,Math.min(v, decksSelected*52));
+    runningCount=clampRunningCount(runningCount);
+    document.getElementById('cardsRemaining').value=cardsRemaining;
+    document.getElementById('runningCount').value=runningCount;
+    updateDisplay();
+}
+
+// Edición manual del Running Count.
+// Se aplica clamp al rango teórico para evitar valores imposibles.
+function updateFromRunning(){
+    let v=parseInt(document.getElementById('runningCount').value)||0;
+    runningCount=clampRunningCount(v);
+    document.getElementById('runningCount').value=runningCount;
+    updateDisplay();
+}
+
+function getHiLoValue(c){
+    if(['2','3','4','5','6'].includes(c)) return 1;
+    if(['7','8','9'].includes(c)) return 0;
+    if(['10','J','Q','K','A'].includes(c)) return -1;
+    return 0;
+}
+function addCard(c){ playTap(); if(cardsRemaining<=0) return; runningCount+=getHiLoValue(c); cardsRemaining--; updateDisplay(); }
+function addCount(v){ playTap(); if(cardsRemaining<=0) return; runningCount+=v; cardsRemaining--; updateDisplay(); }
+function getCardValue(c){ if(c==='A') return 11; if('JQK'.includes(c)) return 10; return parseInt(c); }
+
+// ================================================
+// DEVIATIONS — Hi-Lo 6D H17 DAS
+// ================================================
+function checkDeviations(hv, dv, tc, isPair, pairCard){
+    // ---- FAB 4 SURRENDER ----
+    if(hv===15&&dv===10&&tc<=0)  return {action:'SURRENDER',detail:'Fab 4: Rinde 15 contra 10 cuando TC ≤0. (Basic Strategy pide en esta situación; la desviación rinde porque el EV de rendirse supera al de pedir con mazo neutro o cargado en altas.)',alt:'Opción B: PEDIR',altDetail:'Si no hay surrender disponible en la mesa.',warning:true};
+    if(hv===15&&dv===11&&tc<=2)  return {action:'SURRENDER',detail:'Fab 4: Rinde 15 contra As cuando TC ≤+2. (Basic Strategy pide; contra As del dealer la probabilidad de blackjack del dealer es alta, rendirse limita la pérdida.)',alt:'Opción B: PEDIR',altDetail:'Si no hay surrender disponible.',warning:true};
+    if(hv===16&&dv===9 &&tc<1)   return {action:'SURRENDER',detail:'Fab 4: Rinde 16 contra 9 cuando TC <+1. (Basic Strategy pide; con mazo neutro o bajo rendirse es menos costoso que pedir con 16.)',alt:'Opción B: PEDIR',altDetail:'Si no hay surrender disponible.',warning:true};
+    if(hv===16&&dv===10&&tc<=3)  return {action:'SURRENDER',detail:'Fab 4: Rinde 16 contra 10 cuando TC ≤+3. (Basic Strategy pide; contra 10 del dealer la probabilidad de quedarte es muy baja con 16.)',alt:'Opción B: PEDIR',altDetail:'Si no hay surrender disponible.',warning:true};
+
+    // ---- ILLUSTRIOUS 18 + EXTENDED ----
+    // Stand
+    if(hv===12&&dv===2 &&tc>=3)  return {action:'PLANTARSE',detail:'Ilustre 18: Plántate 12 contra 2 cuando TC ≥+3. (Basic Strategy pide contra 2; con mazo muy cargado en altas el dealer se pasa más, plantarte vale.)'};
+    if(hv===12&&dv===3 &&tc>=2)  return {action:'PLANTARSE',detail:'Ilustre 18: Plántate 12 contra 3 cuando TC ≥+2. (Basic Strategy pide contra 3; con mazo cargado plantarte mejora el EV.)'};
+    if(hv===12&&dv===4 &&tc>=0)  return {action:'PLANTARSE',detail:'Ilustre 18: Plántate 12 contra 4 cuando TC ≥0. (Basic Strategy ya planta contra 4; esta confirma que vale desde TC neutro en adelante.)'};
+    if(hv===12&&dv===5 &&tc>=-2) return {action:'PLANTARSE',detail:'Ilustre 18: Plántate 12 contra 5 cuando TC ≥-2. (Basic Strategy ya planta contra 5; esta amplía el rango incluso con TC ligeramente negativo.)'};
+    if(hv===12&&dv===6 &&tc>=-1) return {action:'PLANTARSE',detail:'Ilustre 18: Plántate 12 contra 6 cuando TC ≥-1. (Basic Strategy ya planta contra 6; esta confirma el rango ampliado.)'};
+    // 13 vs 2: Stand si TC >= -1, Hit si TC < -1 (ver abajo)
+    if(hv===13&&dv===2 &&tc>=-1) return {action:'PLANTARSE',detail:'Ilustre 18: Plántate 13 contra 2 cuando TC ≥-1. (Basic Strategy planta contra 2; esta confirma que sigue siendo correcto incluso con TC ligeramente negativo.)'};
+    // 13 vs 3: Stand si TC >= -2, Hit si TC < -2 (ver abajo)
+    if(hv===13&&dv===3 &&tc>=-2) return {action:'PLANTARSE',detail:'Ilustre 18: Plántate 13 contra 3 cuando TC ≥-2. (Basic Strategy planta contra 3; esta amplía el rango hacia TC más negativo.)'};
+    if(hv===15&&dv===2 &&tc>=5)  return {action:'PLANTARSE',detail:'Desviación: Plántate 15 contra 2 cuando TC ≥+5. (Basic Strategy planta contra 2-6; esta es confirmación en conteo alto.)'};
+    if(hv===15&&dv===7 &&tc>=10) return {action:'PLANTARSE',detail:'Desviación extrema: Plántate 15 contra 7 cuando TC ≥+10. (Basic Strategy pide; rarísima — solo en mazo extremadamente cargado en altas.)'};
+    if(hv===15&&dv===10&&tc>=4)  return {action:'PLANTARSE',detail:'Ilustre 18: Plántate 15 contra 10 cuando TC ≥+4. (Basic Strategy pide; solo vale en conteos muy altos donde el dealer se pasa más.)'};
+    if(hv===15&&dv===9 &&tc>=5)  return {action:'PLANTARSE',detail:'Ilustre 18: Plántate 15 contra 9 cuando TC ≥+5. (Basic Strategy pide; desviación en conteos altos.)'};
+    if(hv===16&&dv===9 &&tc>=1)  return {action:'PLANTARSE',detail:'Ilustre 18: Plántate 16 contra 9 cuando TC ≥+1. (Basic Strategy pide; con mazo ligeramente cargado vale arriesgar plantarte.)'};
+    if(hv===16&&dv===10&&tc>=3.5)  return {action:'PLANTARSE',detail:'Ilustre 18: Plántate 16 contra 10 cuando TC ≥+3.5. (Basic Strategy pide; solo vale en conteo alto donde el dealer se pasa más.)'};
+    if(hv===16&&dv===11&&tc>=2)  return {action:'PLANTARSE',detail:'Ilustre 18: Plántate 16 contra As cuando TC ≥+2. (Basic Strategy pide siempre contra As; aquí el mazo cargado cambia el cálculo.)'};
+
+    // Hit
+    // 13 vs 2: Hit cuando TC < -1 (complemento del stand arriba)
+    if(hv===13&&dv===2 &&tc<-1)  return {action:'PEDIR',detail:'Ilustre 18: Pide 13 contra 2 cuando TC <-1. (Basic Strategy planta; con mazo muy cargado en bajas pedir mejora el EV.)'};
+    // 13 vs 3: Hit cuando TC < -2 (complemento del stand arriba)
+    if(hv===13&&dv===3 &&tc<-2)  return {action:'PEDIR',detail:'Ilustre 18: Pide 13 contra 3 cuando TC <-2. (Basic Strategy planta; con mazo extremadamente cargado en bajas pedir vale.)'};
+
+    // Double
+    if(hv===9 &&dv===2 &&tc>=1)  return {action:'DOBLAR',detail:'Ilustre 18: Dobla 9 contra 2 cuando TC ≥+1. (Basic Strategy pide contra 2; con mazo ligeramente cargado el doble es +EV.)'};
+    if(hv===9 &&dv===3 &&tc>=0)  return {action:'DOBLAR',detail:'Desviación: Dobla 9 contra 3 cuando TC ≥0. (Basic Strategy pide contra 3; con mazo neutro o cargado el doble mejora.)'};
+    if(hv===9 &&dv===7 &&tc>=3)  return {action:'DOBLAR',detail:'Ilustre 18: Dobla 9 contra 7 cuando TC ≥+3. (Basic Strategy pide contra 7; desviación en conteo medio-alto.)'};
+    if(hv===10&&dv===10&&tc>=4)  return {action:'DOBLAR',detail:'Ilustre 18: Dobla 10 contra 10 cuando TC ≥+4. (Basic Strategy pide contra 10; con mazo muy cargado doblar es +EV.)'};
+    if(hv===10&&dv===11&&tc>=4)  return {action:'DOBLAR',detail:'Ilustre 18: Dobla 10 contra As cuando TC ≥+4. (Basic Strategy pide contra As; desviación en conteo alto.)'};
+    if(hv===11&&dv===11&&tc>=1)  return {action:'DOBLAR',detail:'Ilustre 18: Dobla 11 contra As cuando TC ≥+1. (En S17 multi-mazo Basic Strategy pide contra As; con TC positivo doblar es +EV.)'};
+
+    // Split
+    if(isPair&&pairCard==='4'&&(dv===5||dv===6)&&tc>=2) return {action:'DIVIDIR',detail:'Desviación Split: Divide 4s contra 5 o 6 cuando TC ≥+2. (Basic Strategy ya divide 4s contra 5-6; esta confirma que es +EV desde TC +2.)'};
+    if(isPair&&getCardValue(pairCard)===10&&dv===4&&tc>=4) return {action:'DIVIDIR',detail:'Desviación Split: Divide 10s contra 4 cuando TC ≥+4. (Basic Strategy planta 20; solo divide en conteo muy alto.)',warning:true};
+    if(isPair&&getCardValue(pairCard)===10&&(dv===5||dv===6)&&tc>=5) return {action:'DIVIDIR',detail:'Desviación Split: Divide 10s contra 5 o 6 cuando TC ≥+5. (Basic Strategy planta 20; solo divide en conteo extremo.)',warning:true};
+    if(isPair&&pairCard==='9'&&dv===7&&tc>=3) return {action:'PLANTARSE',detail:'Desviación Split: NO divides 9s contra 7 cuando TC ≥+3 — plántate en 18. (Basic Strategy planta 9s contra 7; esta confirma plantarte en conteo alto.)'};
+    if(isPair&&pairCard==='8'&&dv===10&&tc<=-1) return {action:'PEDIR',detail:'Desviación Split: NO divides 8s contra 10 cuando TC ≤-1 — pide. (Normalmente divides siempre 8s; con mazo muy cargado en bajas pedir es mejor.)',warning:true};
+    if(isPair&&pairCard==='8'&&dv===11&&tc<=-1) return {action:'PEDIR',detail:'Desviación Split: NO divides 8s contra As cuando TC ≤-1 — pide. (Normalmente divides siempre 8s; con mazo muy cargado en bajas pedir es mejor.)',warning:true};
+
+    return null;
+}
+
+// ================================================
+// RECOMMENDATION ENGINE
+// ================================================
+function getRecommendation(){
+    playTap();
+    const c1=document.getElementById('card1').value;
+    const c2=document.getElementById('card2').value;
+    const d =document.getElementById('dealerCard').value;
+    if(!c1||!c2||!d){
+        showRecs([{action:'Selecciona las 3 cartas',detail:'Elige tu Carta 1, Carta 2 y la carta del Dealer para obtener la recomendación.',warning:true}]);
+        return;
+    }
+    if(cardsRemaining>=3){
+        runningCount+=getHiLoValue(c1)+getHiLoValue(c2)+getHiLoValue(d);
+        cardsRemaining-=3; updateDisplay();
+    }
+    const tc=roundToHalf(getTrueCountRaw());
+    const v1=getCardValue(c1), v2=getCardValue(c2), dv=getCardValue(d);
+
+    if((c1==='A'&&v2===10)||(c2==='A'&&v1===10)){
+        // BJ vs no-A del dealer: retorno inmediato
+        if(dv!==11){
+            showRecs([{action:'BLACKJACK! 🎉',detail:'21 natural. Cobras 3:2 (o 6:5 según la mesa).'}]); return;
+        }
+    }
+
+    const isPair=(c1===c2)||(v1===10&&v2===10);
+    const isSoft=(c1==='A'||c2==='A')&&(v1+v2<=21);
+    const hv=v1+v2;
+    let recs=[];
+
+    // INSURANCE / EVEN MONEY
+    if(dv===11){
+        const playerBJ=(c1==='A'&&v2===10)||(c2==='A'&&v1===10);
+        if(playerBJ){
+            if(tc>=3) recs.push({action:'Acepta EVEN MONEY',detail:'Con TC ≥+3 hay suficientes Tens en el mazo (probabilidad del dealer de tener BJ ≥ 1/3). Even Money es matemáticamente igual o ligeramente mejor que arriesgar empatar.',warning:true});
+            else       recs.push({action:'RECHAZA Even Money',detail:'Con TC <+3 la probabilidad de BJ del dealer es menor a 1/3. Rechazar Even Money y cobrar 3:2 tiene mejor EV esperado a largo plazo.'});
+            // Después del consejo de Even Money, mostrar BJ y retornar
+            recs.push({action:'BLACKJACK! 🎉',detail:'21 natural. Si rechazas Even Money cobras 3:2 (o 6:5 según la mesa). Si aceptas cobras 1:1 inmediatamente.'});
+            showRecs(recs); return;
+        } else {
+            if(tc>=3) recs.push({action:'Toma SEGURO',detail:'Con TC ≥+3 hay suficientes Tens en el mazo (probabilidad del dealer de tener BJ ≥ 1/3). El seguro es matemáticamente rentable en esta situación.',warning:true});
+            else       recs.push({action:'NO tomes SEGURO',detail:'Con TC <+3 la probabilidad de BJ del dealer es menor a 1/3. El seguro pierde valor esperado a largo plazo.'});
+        }
+    }
+
+    const pairCard = isPair ? c1 : '';
+
+    // CHECK DEVIATIONS FIRST
+    const dev=checkDeviations(hv, dv, tc, isPair, pairCard);
+    if(dev){
+        recs.push(dev);
+        if(dev.alt) recs.push({action:dev.alt, detail:dev.altDetail||'', warning:true});
+        showRecs(recs); return;
+    }
+
+    // ============ BASIC STRATEGY ============
+    if(isPair){
+        if(c1==='A') recs.push({action:'DIVIDIR',detail:'Siempre divide pares de Ases.'});
+        else if(v1===10) recs.push({action:'PLANTARSE',detail:'20 es mano excelente, no dividas.'});
+        else if(v1===9){
+            if(dv===7||dv===10||dv===11) recs.push({action:'PLANTARSE',detail:'Plántate con 18 contra 7, 10 o As.'});
+            else recs.push({action:'DIVIDIR',detail:'Divide 9s contra 2, 3, 4, 5, 6, 8 o 9.'});
+        } else if(v1===8){
+            recs.push({action:'DIVIDIR',detail:'Siempre divide 8s, escapas de tener 16.'});
+        } else if(v1===7){
+            if(dv>=2&&dv<=7) recs.push({action:'DIVIDIR',detail:'Divide 7s contra 2 al 7.'});
+            else recs.push({action:'PEDIR',detail:'Pide contra 8, 9, 10 o As.'});
+        } else if(v1===6){
+            if(dv>=2&&dv<=6) recs.push({action:'DIVIDIR',detail:'Divide 6s contra 2 al 6.'});
+            else recs.push({action:'PEDIR',detail:'Pide contra 7, 8, 9, 10 o As.'});
+        } else if(v1===5){
+            if(dv<=9) recs.push({action:'DOBLAR',detail:'Nunca dividas 5s — dobla contra 2 al 9.'});
+            else recs.push({action:'PEDIR',detail:'Nunca dividas 5s — pide contra 10 o As.'});
+        } else if(v1===4){
+            if(dv===5||dv===6) recs.push({action:'DIVIDIR',detail:'Divide 4s contra 5 o 6.'});
+            else recs.push({action:'PEDIR',detail:'Pide con par de 4s en los demás casos.'});
+        } else if(v1===2||v1===3){
+            if(dv>=2&&dv<=7) recs.push({action:'DIVIDIR',detail:'Divide 2s/3s contra 2 al 7.'});
+            else recs.push({action:'PEDIR',detail:'Pide contra 8, 9, 10 o As.'});
+        }
+    } else if(isSoft){
+        if(hv===20) recs.push({action:'PLANTARSE',detail:'Soft 20 (As+9) es mano excelente.'});
+        else if(hv===19){
+            if(dv===6&&tc>=1) recs.push({action:'DOBLAR',detail:'Con TC positivo, dobla soft 19 contra 6.'});
+            else recs.push({action:'PLANTARSE',detail:'Soft 19 (As+8), plántate.'});
+        } else if(hv===18){
+            if(dv>=3&&dv<=6) recs.push({action:'DOBLAR',detail:'Dobla soft 18 contra 3, 4, 5 o 6.'});
+            else if(dv===2||dv===7||dv===8) recs.push({action:'PLANTARSE',detail:'Plántate soft 18 contra 2, 7 u 8.'});
+            else recs.push({action:'PEDIR',detail:'Pide soft 18 contra 9, 10 o As.'});
+        } else if(hv===17){
+            if(dv>=3&&dv<=6) recs.push({action:'DOBLAR',detail:'Dobla soft 17 contra 3, 4, 5 o 6.'});
+            else recs.push({action:'PEDIR',detail:'Pide soft 17 contra 2, 7, 8, 9, 10 o As.'});
+        } else if(hv===16){
+            if(dv>=4&&dv<=6) recs.push({action:'DOBLAR',detail:'Dobla soft 16 contra 4, 5 o 6.'});
+            else recs.push({action:'PEDIR',detail:'Pide soft 16 en los demás casos.'});
+        } else if(hv===15){
+            if(dv>=4&&dv<=6) recs.push({action:'DOBLAR',detail:'Dobla soft 15 contra 4, 5 o 6.'});
+            else recs.push({action:'PEDIR',detail:'Pide soft 15 en los demás casos.'});
+        } else if(hv===14){
+            if(dv===5||dv===6) recs.push({action:'DOBLAR',detail:'Dobla soft 14 contra 5 o 6.'});
+            else recs.push({action:'PEDIR',detail:'Pide soft 14 en los demás casos.'});
+        } else if(hv===13){
+            if(dv===5||dv===6) recs.push({action:'DOBLAR',detail:'Dobla soft 13 contra 5 o 6.'});
+            else recs.push({action:'PEDIR',detail:'Pide soft 13 en los demás casos.'});
+        } else recs.push({action:'PEDIR',detail:'Pide para mejorar mano soft.'});
+    } else {
+        // HARD
+        if(hv===21) recs.push({action:'PLANTARSE',detail:'¡Tienes 21!'});
+        else if(hv>=17) recs.push({action:'PLANTARSE',detail:'Mano de 17 o más — siempre plántate.'});
+        else if(hv===16){
+            if(dv>=9){ recs.push({action:'SURRENDER',detail:'Rinde contra 9, 10 o As (si disponible).',warning:true}); recs.push({action:'Opción B: PEDIR',detail:'Si no hay surrender, pide carta.'}); }
+            else if(dv>=7) recs.push({action:'PEDIR',detail:'Pide contra 7 u 8.'});
+            else recs.push({action:'PLANTARSE',detail:'Plántate contra 2, 3, 4, 5 o 6.'});
+        } else if(hv===15){
+            if(dv===10||dv===11){ recs.push({action:'SURRENDER',detail:'Rinde contra 10 o As (si disponible).',warning:true}); recs.push({action:'Opción B: PEDIR',detail:'Si no hay surrender, pide.'}); }
+            else if(dv>=7) recs.push({action:'PEDIR',detail:'Pide contra 7, 8 o 9.'});
+            else recs.push({action:'PLANTARSE',detail:'Plántate contra 2, 3, 4, 5 o 6.'});
+        } else if(hv===14){
+            if(dv>=7) recs.push({action:'PEDIR',detail:'Pide contra 7, 8, 9, 10 o As.'});
+            else recs.push({action:'PLANTARSE',detail:'Plántate contra 2, 3, 4, 5 o 6.'});
+        } else if(hv===13){
+            if(dv>=7) recs.push({action:'PEDIR',detail:'Pide contra 7, 8, 9, 10 o As.'});
+            else recs.push({action:'PLANTARSE',detail:'Plántate contra 2, 3, 4, 5 o 6.'});
+        } else if(hv===12){
+            if(dv>=4&&dv<=6) recs.push({action:'PLANTARSE',detail:'Plántate contra 4, 5 o 6 — alta probabilidad de que se pase.'});
+            else recs.push({action:'PEDIR',detail:'Pide contra 2, 3, 7, 8, 9, 10 o As.'});
+        } else if(hv===11){
+            if(dv===11) recs.push({action:'PEDIR',detail:'Pide 11 contra As (regla S17 multi-mazo).'});
+            else recs.push({action:'DOBLAR',detail:'11 es la mejor mano para doblar — contra 2 al 10.'});
+        } else if(hv===10){
+            if(dv>=10) recs.push({action:'PEDIR',detail:'Pide contra 10 o As.'});
+            else recs.push({action:'DOBLAR',detail:'Dobla 10 contra 2 al 9.'});
+        } else if(hv===9){
+            if(dv>=3&&dv<=6) recs.push({action:'DOBLAR',detail:'Dobla 9 contra 3, 4, 5 o 6.'});
+            else recs.push({action:'PEDIR',detail:'Pide 9 contra 2, 7, 8, 9, 10 o As.'});
+        } else recs.push({action:'PEDIR',detail:'Mano muy baja — siempre pide para mejorar.'});
+    }
+    showRecs(recs);
+}
+
+function showRecs(recs){
+    const c=document.getElementById('recommendationContainer'); c.innerHTML='';
+    recs.forEach(r=>{
+        const d=document.createElement('div'); d.className='strategy-recommendation';
+        d.innerHTML='<div class="recommendation-text">'+r.action+'</div><div class="recommendation-detail'+(r.warning?' warning':'')+'\">'+r.detail+'</div>';
+        c.appendChild(d);
+    });
+}
+
+function resetCount(){
+    playTap(); runningCount=0; cardsRemaining=decksSelected*52;
+    document.getElementById('recommendationContainer').innerHTML='';
+    document.getElementById('card1').value='';
+    document.getElementById('card2').value='';
+    document.getElementById('dealerCard').value='';
+    updateDisplay();
+}
+
+updateDisplay();
+</script>
+</body>
+</html>
