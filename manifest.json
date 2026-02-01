@@ -1,26 +1,17 @@
 {
   "name": "BlackJack Counter 21 byHP",
-  "short_name": "BJ21HP",
+  "short_name": "BJ Counter 21",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#000000",
-  "theme_color": "#000000",
+  "background_color": "#065f46",
+  "theme_color": "#065f46",
+  "orientation": "portrait",
   "icons": [
     {
-      "src": "icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "icon-512.png",
+      "src": "icon.png",
       "sizes": "512x512",
-      "type": "image/png"
-    },
-    {
-      "src": "splash.png",
-      "sizes": "512x1024",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
-  ],
-  "description": "Una app sobre el conteo de cartas"
+  ]
 }
